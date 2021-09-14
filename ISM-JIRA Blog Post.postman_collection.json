@@ -1,0 +1,104 @@
+{
+	"info": {
+		"_postman_id": "8b6e3cb1-d26b-4254-b7c4-8c8597b947ed",
+		"name": "ISM/JIRA Blog Post",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authenticate to JIRA (Get list of projects)",
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "API_KEY_FOR_JIRA_SERVICE_ACCOUNT",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "SERVICE_ACCOUNT_EMAIL",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "YOUR_JIRA_TENANT_URL/api/2/project",
+					"host": [
+						"YOUR_JIRA_TENANT_URL"
+					],
+					"path": [
+						"api",
+						"2",
+						"project"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Authenticate to ISM (Get releaseprojects)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "rest_api_key=API_KEY_FOR_ISM_SERVICE_ACCOUNT",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "YOUR_ISM_TENANR_URL/api/odata/businessobject/releaseprojects",
+					"host": [
+						"YOUR_ISM_TENANR_URL"
+					],
+					"path": [
+						"api",
+						"odata",
+						"businessobject",
+						"releaseprojects"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Releaseproject Metadata",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "rest_api_key=E14B067B613D4A8DA7909EE6DA8D8A6C",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "https://criticaldesign.trysaasit.com/api/odata/releaseprojects/$metadata",
+					"protocol": "https",
+					"host": [
+						"criticaldesign",
+						"trysaasit",
+						"com"
+					],
+					"path": [
+						"api",
+						"odata",
+						"releaseprojects",
+						"$metadata"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
