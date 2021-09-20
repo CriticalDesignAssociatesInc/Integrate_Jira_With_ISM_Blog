@@ -1,0 +1,139 @@
+{}var Base64={_keyStr:"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",encode:function(e){var t="";var n,r,i,s,o,u,a;var f=0;e=Base64._utf8_encode(e);while(f<e.length){n=e.charCodeAt(f++);r=e.charCodeAt(f++);i=e.charCodeAt(f++);s=n>>2;o=(n&3)<<4|r>>4;u=(r&15)<<2|i>>6;a=i&63;if(isNaN(r)){u=a=64}else if(isNaN(i)){a=64}t=t+this._keyStr.charAt(s)+this._keyStr.charAt(o)+this._keyStr.charAt(u)+this._keyStr.charAt(a)}return t},decode:function(e){var t="";var n,r,i;var s,o,u,a;var f=0;e=e.replace(/[^A-Za-z0-9\+\/\=]/g,"");while(f<e.length){s=this._keyStr.indexOf(e.charAt(f++));o=this._keyStr.indexOf(e.charAt(f++));u=this._keyStr.indexOf(e.charAt(f++));a=this._keyStr.indexOf(e.charAt(f++));n=s<<2|o>>4;r=(o&15)<<4|u>>2;i=(u&3)<<6|a;t=t+String.fromCharCode(n);if(u!=64){t=t+String.fromCharCode(r)}if(a!=64){t=t+String.fromCharCode(i)}}t=Base64._utf8_decode(t);return t},_utf8_encode:function(e){e=e.replace(/\r\n/g,"\n");var t="";for(var n=0;n<e.length;n++){var r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r)}else if(r>127&&r<2048){t+=String.fromCharCode(r>>6|192);t+=String.fromCharCode(r&63|128)}else{t+=String.fromCharCode(r>>12|224);t+=String.fromCharCode(r>>6&63|128);t+=String.fromCharCode(r&63|128)}}return t},_utf8_decode:function(e){var t="";var n=0;var r=c1=c2=0;while(n<e.length){r=e.charCodeAt(n);if(r<128){t+=String.fromCharCode(r);n++}else if(r>191&&r<224){c2=e.charCodeAt(n+1);t+=String.fromCharCode((r&31)<<6|c2&63);n+=2}else{c2=e.charCodeAt(n+1);c3=e.charCodeAt(n+2);t+=String.fromCharCode((r&15)<<12|(c2&63)<<6|c3&63);n+=3}}return t}};
+
+
+// Authorization Credentials for JIRA
+// NOTE: Credentials are dependant on customer environment
+// url is the Content Download URL for the Attachment in JIRA
+var UserName = 'JIRA_SERVICE_ACCOUNT_EMAIL'; //Change this
+var APIToken = 'JIRA_SERICE_ACCOUNT_API_KEY'; //Change this
+var AuthToken = UserName + ':' + APIToken;
+var url = '$(LAB_JIRAAttachmentContentURL)';
+
+// Attachment information
+var filename = '$(LAB_JIRAAttachmentFileName)';
+var fileType = filename.substring(filename.length - 3);
+
+// RecId of Release
+var releaseRecId = '$(RecId)';
+
+// Header Parameter Json Variable for Request to Get Attachment Data from JIRA
+var getJsonRequestSettingsJIRA = function () {
+	return {
+		Headers : {
+			"Authorization": "Basic " + Base64.encode(AuthToken),
+			'Content-Type' : 'application/json'
+		},
+		AllowAutoRedirect: true
+	};
+};
+
+// Execute API Call
+// Get Attachment Data from JIRA
+// NOTE: No payload
+var jiraResponse = ExecuteWebRequest('GET', url, null, getJsonRequestSettingsJIRA());
+var AttachmentData = jiraResponse.Data;
+
+// Adding boundary and formatting data
+var boundary = "----------" + '$(RecId)';
+var str = "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" + filename + "\";\r\nContent-Type: application/octet-stream;\r\n\r\n";
+
+var strend = "\r\n--" + boundary + "--";
+
+var bytes = [];
+var data = [];
+
+for (var i = 0; i < str.length; ++i) {
+	bytes.push(str.charCodeAt(i));
+}
+
+if(fileType == 'txt'){
+	for (var i = 0; i < AttachmentData.length; ++i) {
+		bytes.push(AttachmentData.charCodeAt(i));
+	}
+}
+else{
+	bytes = bytes.concat(AttachmentData);
+}
+
+for (var j = 0; j < strend.length; ++j) {
+	bytes.push(strend.charCodeAt(j));
+}
+
+data = bytes;
+
+
+
+
+// Header Parameter Json Variable for Request to ISM
+var getJsonRequestSettingsISM = function () {
+	return {
+		Headers : {
+			"Authorization": "rest_api_key=ISM_SERVICE_ACCOUNT_API_KEY", //Change this
+			'Accept' : 'application/json',
+			'Content-Type' : 'multipart/form-data;boundary=' + boundary
+		},
+		Cookies : {},
+		SkipServerCertificateValidation : true,
+		UserName : null,
+		Password : null,
+		AllowAutoRedirect : false,
+		contentType : false,
+		mimeType : 'multipart/form-data'
+	};
+};
+
+// ISM API URL to Create New Attachment
+var ISMTenant = 'ISM_TENANT_URL'; //Change this
+var ISMResourcePath = "/api/rest/Attachment";
+var ISMurl = ISMTenant + ISMResourcePath;
+
+// Execute API Call
+// Create New Attachment in ISM
+var ISMresponse = ExecuteWebRequest('POST', ISMurl, data, getJsonRequestSettingsISM()).Data;
+
+// Remove [brackets] from ISMresponse
+// This leaves us with a string we can easily convert to a JSON object
+var jsonString = ISMresponse.substring(1, ISMresponse.length-1);
+
+// Parse string into JSON
+var parseValue = JSON.parse(jsonString);
+
+// RecId of newly created Attachment object in ISM
+var AttachmentRecId = parseValue.Message;
+
+// API URL to link 2 Business Objects (Release and Attachment)
+var linkResourcePath = "/api/odata/businessobject/releaseprojects('" + releaseRecId + "')/ReleaseProjectContainsAttachment('" + AttachmentRecId + "')/$Ref";
+var linkObjectsURL = ISMTenant + linkResourcePath;
+
+// Header Parameter Json Variable for Request to ISM for Linking Attachment to Release
+var getJsonRequestSettingsISMLink = function () {
+	return {
+		Headers : {
+			"Authorization": "rest_api_key=$(GetGlobal('a_ISMAPIKey'))",
+			'Accept' : 'application/json',
+			'Content-Type' : 'application/json'
+		},
+		Cookies : {},
+		SkipServerCertificateValidation : true,
+		UserName : null,
+		Password : null,
+		AllowAutoRedirect : false
+	};
+};
+
+// Execute API Call
+// Link new Attachment to Release in ISM
+// NOTE: no payload
+var ISMLinkResponse = ExecuteWebRequest('PATCH', linkObjectsURL, null, getJsonRequestSettingsISMLink());
+
+// Get new reference to Release
+var release = Get('ReleaseProject#', '$(RecId)');
+
+// Clean up
+// Reset Release fields to empty string
+release.Update(
+{
+	LAB_JIRAAttachmentContentURL: "",
+	LAB_JIRAAttachmentFileName: ""
+}
+);
