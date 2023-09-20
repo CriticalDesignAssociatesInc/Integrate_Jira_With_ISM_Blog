@@ -29,20 +29,32 @@ var getJsonRequestSettings = function () {
 var ReleaseData = {
 	"fields":{
 		"project": {
-			"key": "$(MHK_JIRAProjectName)"
+			"key": "$(LAB_JIRAProjectName)"
 		},
 		"summary": "$(Subject): Release# $(ReleaseNumber) - ReleaseType $(TypeOfRelease)",
 		"description": "$(Scope)",
 		"issuetype": {
-			"name": "$(MHK_JIRAIssueType)"
+			"name": "$(LAB_JIRAIssueType)"
 		},
-		"customfield_10050": "$(RecId)",
+		"customfield_XXXXX": "$(RecId)", //Change this to the JIRA Field ID for ISM RecID
 		"priority": {
-			"name": "$(MHK_JIRAPriority)"
+			"name": "$(LAB_JIRAPriority)"
 		}
 	}
 };
 var ConvertToJSONString = JSON.stringify(ReleaseData);
 
 // Execute API Call
-ExecuteWebRequest('POST', url, ConvertToJSONString, getJsonRequestSettings());
+var response = ExecuteWebRequest('POST', url, ConvertToJSONString, getJsonRequestSettings());
+var jsonData = JSON.parse(response.Data);
+
+// Get new reference to Release Object
+var release = Get('ReleaseProject#', '$(RecId)');
+
+// Update release object
+release.Update(
+{
+	LAB_JIRAIssueNum: jsonData.key
+	LAB_JIRAStatus: "To Do"
+}
+);
